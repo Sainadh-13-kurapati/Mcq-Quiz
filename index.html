@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MCQ Quiz</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; }
+    header, .quiz-container, footer { padding: 20px; max-width: 800px; margin: auto; }
+    header { background-color: #00274d; color: white; text-align: center; }
+    .question-nav { display: flex; justify-content: center; gap: 10px; padding: 10px 0; flex-wrap: wrap; }
+    .question-nav button { padding: 10px; }
+    .question-box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .options label { display: block; padding: 10px; margin: 10px 0; background: #f0f0f0; border-radius: 5px; cursor: pointer; }
+    .correct { background-color: #d4edda !important; }
+    .incorrect { background-color: #f8d7da !important; }
+    .footer { margin-top: 20px; text-align: center; }
+    .timer, .score { margin: 10px; font-weight: bold; }
+    #login-section, #result-section { text-align: center; margin-top: 100px; }
+    input[type="text"] { padding: 10px; width: 200px; }
+    #start-quiz, #next-question, #restart-quiz, #review-answers { padding: 10px 20px; margin: 10px; }
+    #next-question, #restart-quiz, #review-answers { display: none; }
+    #quiz-section, #result-section { display: none; }
+  </style>
+</head>
+<body>
+
+<div id="login-section">
+  <h2>Login to Start Quiz</h2>
+  <input type="text" id="username" placeholder="Enter your name" />
+  <button id="start-quiz">Start Quiz</button>
+</div>
+
+<div id="quiz-section">
+  <header>
+    <h1>MCQ Quiz</h1>
+    <div class="timer">Time: <span id="timer">0</span>s</div>
+    <div class="score">Score: <span id="score">0</span></div>
+  </header>
+
+  <div class="question-nav" id="question-nav"></div>
+
+  <div class="quiz-container">
+    <div class="question-box">
+      <div id="question-text"></div>
+      <div class="options" id="options"></div>
+      <div id="explanation" style="margin-top: 10px; color: green; font-style: italic;"></div>
+      <button id="next-question">Next</button>
+    </div>
+  </div>
+</div>
+
+<div id="result-section">
+  <div class="quiz-container">
+    <div id="result-message" style="text-align:center; font-weight:bold; font-size:18px; margin-top:20px;"></div>
+    <div style="text-align:center;">
+      <button id="restart-quiz">Restart Quiz</button>
+      <button id="review-answers">Review Answers</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const questions = [
+    {
+      text: "Which form is used to report an S corporation's income to the IRS?",
+      options: ["Form 1065", "Form 1120", "Form 1120S", "Form 1040"],
+      correct: 2,
+      explanation: "Form 1120S is used to report income, gains, losses, deductions, and credits of an S corporation."
+    },
+    {
+      text: "What is the penalty for failure to file a tax return by the due date (without an extension)?",
+      options: ["0.5% per month", "1% per month", "5% per month", "10% per month"],
+      correct: 2,
+      explanation: "The penalty for failure to file is typically 5% of the unpaid taxes for each month that a return is late, up to 25%."
+    },
+    {
+      text: "Which of the following is NOT a requirement for a Section 351 exchange?",
+      options: ["Property is transferred to a corporation", "Transferors are in control of the corporation", "Transfer is solely in exchange for stock", "The corporation must be an S Corporation"],
+      correct: 3,
+      explanation: "The corporation does not need to be an S Corporation for Section 351 to apply."
+    },
+    {
+      text: "A taxpayer earns $400 in interest and $600 in dividends. What is the total taxable income from these sources?",
+      options: ["$0", "$400", "$600", "$1,000"],
+      correct: 3,
+      explanation: "Both interest and dividends are taxable income unless specifically exempt."
+    },
+    {
+      text: "What is the statute of limitations for the IRS to assess additional tax if a taxpayer omits more than 25% of gross income?",
+      options: ["3 years", "6 years", "10 years", "Unlimited"],
+      correct: 1,
+      explanation: "If more than 25% of gross income is omitted, the statute of limitations extends to 6 years."
+    }
+  ];
+
+  let currentQuestion = 0;
+  let score = 0;
+  let timer = 0;
+  let timerInterval;
+  let answered = new Array(questions.length).fill(false);
+  let userAnswers = [];
+
+  document.getElementById("start-quiz").onclick = () => {
+    const username = document.getElementById("username").value;
+    if (!username) return alert("Please enter your name to start.");
+
+    document.getElementById("login-section").style.display = "none";
+    document.getElementById("quiz-section").style.display = "block";
+    loadQuestion(0);
+    startTimer();
+  };
+
+  function loadQuestion(index) {
+    currentQuestion = index;
+    const q = questions[index];
+    document.getElementById("question-text").innerHTML = `<strong>Q${index + 1}:</strong> ${q.text}`;
+    document.getElementById("options").innerHTML = q.options.map((opt, i) => `
+      <label id="option-${i}"><input type="radio" name="option" onclick="checkAnswer(${i})"> ${String.fromCharCode(65 + i)}. ${opt}</label>
+    `).join('');
+    document.getElementById("explanation").innerText = "";
+    document.getElementById("next-question").style.display = "none";
+  }
+
+  function checkAnswer(selected) {
+    const q = questions[currentQuestion];
+    const labels = document.querySelectorAll(".options label");
+    labels.forEach((label, i) => {
+      label.classList.remove("correct", "incorrect");
+      if (i === q.correct) label.classList.add("correct");
+      else if (i === selected) label.classList.add("incorrect");
+    });
+
+    if (!answered[currentQuestion]) {
+      if (selected === q.correct) score++;
+      userAnswers[currentQuestion] = selected;
+      answered[currentQuestion] = true;
+    }
+
+    document.getElementById("score").innerText = score;
+    document.getElementById("explanation").innerText = q.explanation;
+    document.getElementById("next-question").style.display = "inline-block";
+  }
+
+  document.getElementById("next-question").onclick = () => {
+    if (currentQuestion + 1 < questions.length) {
+      loadQuestion(currentQuestion + 1);
+    } else {
+      endQuiz();
+    }
+  };
+
+  function endQuiz() {
+    clearInterval(timerInterval);
+    const result = score >= 3 ? "PASS" : "FAIL";
+    document.getElementById("quiz-section").style.display = "none";
+    document.getElementById("result-section").style.display = "block";
+    document.getElementById("result-message").innerText = `Quiz Completed!\nYour score: ${score}/${questions.length}\nResult: ${result}`;
+    document.getElementById("restart-quiz").style.display = "inline-block";
+    document.getElementById("review-answers").style.display = "inline-block";
+  }
+
+  document.getElementById("restart-quiz").onclick = () => {
+    location.reload();
+  };
+
+  document.getElementById("review-answers").onclick = () => {
+    let reviewHTML = "<h2>Review Answers</h2>";
+    questions.forEach((q, idx) => {
+      const userAns = userAnswers[idx];
+      reviewHTML += `<p><strong>Q${idx + 1}:</strong> ${q.text}</p>`;
+      reviewHTML += q.options.map((opt, i) => {
+        const isCorrect = i === q.correct;
+        const wasSelected = i === userAns;
+        return `<div style="background:${isCorrect ? '#d4edda' : wasSelected ? '#f8d7da' : 'transparent'}; padding:5px; border-radius:5px;">${String.fromCharCode(65 + i)}. ${opt}</div>`;
+      }).join('');
+      reviewHTML += `<p style="color:green; font-style:italic;">${q.explanation}</p><hr />`;
+    });
+    document.getElementById("result-section").innerHTML = reviewHTML;
+  };
+
+  function startTimer() {
+    timerInterval = setInterval(() => {
+      timer++;
+      document.getElementById("timer").innerText = timer;
+    }, 1000);
+  }
+
+  const nav = document.getElementById("question-nav");
+  for (let i = 0; i < questions.length; i++) {
+    const btn = document.createElement("button");
+    btn.innerText = i + 1;
+    btn.onclick = () => loadQuestion(i);
+    nav.appendChild(btn);
+  }
+</script>
+
+</body>
+</html>
